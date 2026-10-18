@@ -1,17 +1,20 @@
-document.getElementById("anemiaForm").addEventListener("submit", async function (e) {
-    e.preventDefault();
+const form = document.getElementById("anemiaForm");
+const resultBox = document.getElementById("result");
+
+form.addEventListener("submit", async function (event) {
+    event.preventDefault();
 
     const data = {
-        gender: parseInt(document.getElementById("gender").value),
-        hemoglobin: parseFloat(document.getElementById("hemoglobin").value),
-        mch: parseFloat(document.getElementById("mch").value),
-        mchc: parseFloat(document.getElementById("mchc").value),
-        mcv: parseFloat(document.getElementById("mcv").value)
+        gender: Number(document.getElementById("gender").value),
+        hemoglobin: Number(
+            document.getElementById("hemoglobin").value
+        ),
+        mch: Number(document.getElementById("mch").value),
+        mchc: Number(document.getElementById("mchc").value),
+        mcv: Number(document.getElementById("mcv").value)
     };
 
-    const resultElement = document.getElementById("result");
-
-    resultElement.innerText = "Processing prediction...";
+    resultBox.textContent = "Processing prediction...";
 
     try {
         const response = await fetch("/predict", {
@@ -22,23 +25,45 @@ document.getElementById("anemiaForm").addEventListener("submit", async function 
             body: JSON.stringify(data)
         });
 
-        const result = await response.json();
+        const responseText = await response.text();
 
-        if (!response.ok) {
-            throw new Error(result.error || "Prediction request failed");
+        let result;
+
+        try {
+            result = JSON.parse(responseText);
+        } catch {
+            throw new Error(
+                `The server returned an unexpected response (HTTP ${response.status}).`
+            );
         }
 
-        resultElement.textContent = result.result;
+        if (!response.ok) {
+            throw new Error(
+                result.error || `Request failed: HTTP ${response.status}`
+            );
+        }
+
+        if (!result.result) {
+            throw new Error("The server did not return a prediction.");
+        }
+
+        const message = document.createElement("p");
+        message.textContent = result.result;
+
+        resultBox.replaceChildren(message);
 
     } catch (error) {
         console.error("Prediction error:", error);
 
-        resultElement.textContent =
-            "Unable to get prediction. Please try again.";
+        const message = document.createElement("p");
+        message.textContent = error.message;
+
+        resultBox.replaceChildren(message);
     }
 });
 
+
 function resetForm() {
-    document.getElementById("anemiaForm").reset();
-    document.getElementById("result").innerText = "";
+    form.reset();
+    resultBox.textContent = "";
 }
